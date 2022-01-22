@@ -6,8 +6,7 @@ Implementar uma API REST em que um usuário possa realizar um cadastro, publicar
 REQUISITOS TÉCNICOS
 Criar a aplicação em formato REST;
 Python 3/PIP;
-Django REST Framework (preferencialmente). Mas pode utilizar qualquer framework em Python. Queremos avaliar se você conhece os conceitos da web;
-Banco de dados: relacional. Preferencialmente PostgreSQL;
+Django REST Framework (preferencialmente).
 
 
 
@@ -41,7 +40,58 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username']
+        
+            
+            
+Para criar uma visualização somente leitura para sua lista de usuários e uma visualização somente leitura para um único usuário, adicione o seguinte a blog/api/views.py:
+
+from rest_framework import generics
+from api import serializers
+from django.contrib.auth.models import User
+
+class UserList(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = serializers.UserSerializer
+
+class UserDetail(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = serializers.UserSerializer
 
 
 
+Criando a API de postagem:
+Com uma API de usuário básica configurada, podemos criar uma API completa para um blog, com endpoints para postagens. Comece criando a API Post.
 
+
+Em blog/api/models.py, crie um modelo Post que herda da classe Model do Django e defina seus campos:
+
+from django.db import models
+
+class Post(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    title = models.CharField(max_length=100, blank=True, default='')
+    body = models.TextField(blank=True, default='')
+    owner = models.ForeignKey('auth.User', related_name='posts', on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ['created']
+
+Post serializer:
+
+Para adicionar o modelo Post à API, seguiremos um processo semelhante ao que seguiu para o modelo User.
+blog/api/serializers.py
+from api.models import Post
+
+class PostSerializer(serializers.ModelSerializer):
+    owner = serializers.ReadOnlyField(source='owner.username')
+
+    class Meta:
+        model = Post
+        fields = ['id', 'title', 'body', 'owner']
+
+class UserSerializer(serializers.ModelSerializer):
+    posts = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'posts']
